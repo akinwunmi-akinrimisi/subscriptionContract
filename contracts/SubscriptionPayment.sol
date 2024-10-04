@@ -65,7 +65,13 @@ contract SubscriptionPayment {
 
     // Events
     event ServiceProviderRegistered(address indexed providerAddress, string providerName);
-    event SubscriptionPlanCreated(address indexed user, address indexed providerAddress, uint planId);
+    // event SubscriptionPlanCreated(address indexed user, address indexed providerAddress, uint planId);
+    event SubscriptionPlanCreated(
+    address indexed providerAddress,
+    uint planId,
+    string planName
+);
+
     event PaymentApproved(address indexed user, address indexed providerAddress, uint planId);
     event SubscriptionPaused(address indexed user, address indexed providerAddress, uint planId);
     event FundsWithdrawn(address indexed providerAddress, uint amount);
@@ -96,59 +102,54 @@ contract SubscriptionPayment {
     }
 
 
-    function registerServiceProvider(address _providerAddress, string memory _providerName) external onlyOwner whenNotPaused {
-        // Ensure the service provider is not already registered
-        require(serviceProviders[_providerAddress].providerAddress != _providerAddress, "Provider already registered");
+function registerServiceProvider(address _providerAddress, string memory _providerName) external onlyOwner whenNotPaused {
+    // Ensure the service provider is not already registered
+    require(serviceProviders[_providerAddress].providerAddress != _providerAddress, "Provider already registered");
 
-        // Initialize the new service provider using a memory struct
-        ServiceProvider memory newServiceProvider = ServiceProvider({
-            providerAddress: _providerAddress,
-            providerName: _providerName,
-            totalPlans: 0,
-            totalSubscribers: 0,
-            balance: 0
-        });
+    // Create and initialize the new service provider in storage
+    ServiceProvider storage newServiceProvider = serviceProviders[_providerAddress];
+    newServiceProvider.providerAddress = _providerAddress;
+    newServiceProvider.providerName = _providerName;
+    newServiceProvider.totalPlans = 0;
+    newServiceProvider.totalSubscribers = 0;
+    newServiceProvider.balance = 0;
 
-        // Update the mapping with the new service provider
-        serviceProviders[_providerAddress] = newServiceProvider;
+    // Mark the provider as registered in the mapping
+    allServiceProviders[_providerAddress] = true;
 
-        // Mark the provider as registered in the mapping
-        allServiceProviders[_providerAddress] = true;
-
-            // Emit an event to log the registration
-        emit ServiceProviderRegistered(_providerAddress, _providerName);
-    }
-
-    
-    function createSubscriptionPlan(
-        string memory _planName,
-        uint _price,
-        uint _paymentInterval
-    ) external whenNotPaused {
-        // Ensure the caller is a registered service provider using the mapping
-        require(allServiceProviders[msg.sender], "yet to register");
-
-        // Ensure the price and payment interval are valid
-        require(_price > 0, "Price must be greater than 0");
-        require(_paymentInterval > 0, "Payment interval must be greater than 0");
-
-        // Increment the total plans for this provider to use as the new plan ID
-        uint newPlanId = serviceProviders[msg.sender].totalPlans + 1;
-
-        // Create the new subscription plan and store it in the provider's mapping
-        serviceProviders[msg.sender].plans[newPlanId] = SubscriptionPlan({
-            planId: newPlanId,
-            planName: _planName,
-            price: _price,
-            paymentInterval: _paymentInterval
-        });
-
-        // Update the total plans count for the provider
-        serviceProviders[msg.sender].totalPlans = newPlanId;
-
-        // Emit an event to log the creation of a new subscription plan
-        emit SubscriptionPlanCreated(msg.sender, newPlanId, _planName, _price, _paymentInterval, paymentToken);
-    }
-
+    // Emit an event to log the registration
+    emit ServiceProviderRegistered(_providerAddress, _providerName);
 }
 
+    
+function createSubscriptionPlan(
+    string memory _planName,
+    uint _price,
+    uint _paymentInterval
+) external whenNotPaused {
+    // Ensure the caller is a registered service provider using the mapping
+    require(allServiceProviders[msg.sender], "yet to register");
+
+    // Ensure the price and payment interval are valid
+    require(_price > 0, "Price must be greater than 0");
+    require(_paymentInterval > 0, "Payment interval must be greater than 0");
+
+    // Increment the total plans for this provider to use as the new plan ID
+    uint newPlanId = serviceProviders[msg.sender].totalPlans + 1;
+
+    // Create the new subscription plan and store it in the provider's mapping
+    serviceProviders[msg.sender].plans[newPlanId] = SubscriptionPlan({
+        planId: newPlanId,
+        planName: _planName,
+        price: _price,
+        paymentInterval: _paymentInterval
+    });
+
+    // Update the total plans count for the provider
+    serviceProviders[msg.sender].totalPlans = newPlanId;
+
+    // Emit an event to log the creation of a new subscription plan
+    emit SubscriptionPlanCreated(msg.sender, newPlanId, _planName);
+}
+
+}
